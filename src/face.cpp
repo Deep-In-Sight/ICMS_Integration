@@ -5,17 +5,38 @@ EA_MEASURE_TIME_DECLARE();
 
 void Face::Init()
 {
-	is_driver_valid = 0;
+
+	icc_detect_is_driver_valid = -1;
+	icc_detect_is_face_valid = -1;
+	driver_x = -1;
+	driver_y = -1;
+	driver_z = -1;
+
+	icc_detect_head_position.x = -1;
+	icc_detect_head_position.y = -1;
+	icc_detect_head_position.z = -1;
 }
 
-void Face::build(Parser &PARSER)
+void Face::build(Parser PARSER)
 {
+
+	conf_threshold = 0;
+
 	EA_LOG_SET_LOCAL(PARSER.YOLO_log_level);
 	EA_LOG_NOTICE("\n@@@@@@@@@@@@@@@   FACE model init   @@@@@@@@@@@@@@@         	\n");
-
+	std::cout << "PARSER.YOLO_ENGINE  " << PARSER.YOLO_ENGINE << std::endl;
+	conf_threshold = 0;
+	printf("PARSER.YOLO_CONFIDENCE %f \n	", PARSER.YOLO_CONFIDENCE);
+	conf_threshold = 0;
 	conf_threshold = PARSER.YOLO_CONFIDENCE;
+	std::cout << "PARSER.YOLO_ENGINE  " << PARSER.YOLO_CONFIDENCE << std::endl;
 	nms_threshold = PARSER.YOLO_NMS;
 	C_WIDTH = PARSER.YOLO_WIDTH;
+	std::cout << "PARSER.YOLO_ENGINE  " << PARSER.YOLO_NMS << std::endl;
+	camera_h = (float)PARSER.camera_h;
+	camera_w = (float)PARSER.camera_w;
+
+	int img_c = 3;
 
 	std::strcpy(label, "face");
 
@@ -43,20 +64,6 @@ void Face::build(Parser &PARSER)
 	model_config.out[0].out = ea_tensor_new(ea_tensor_dtype(model_config.out_info[0].tensor), shape, ea_tensor_pitch(model_config.out_info[0].tensor)); // EA_F32 | x | 32
 	model_config.out_num = nn_out_num;
 
-	EA_LOG_NOTICE("network input: %s\n", model_config.in_info[0].name);
-	EA_LOG_NOTICE("network output: %s\n", model_config.out_info[0].name);
-	EA_LOG_NOTICE("in_num            	%d \n", model_config.in_num);
-	EA_LOG_NOTICE("in_info[0].name  	%s \n", model_config.in_info[0].name);
-	EA_LOG_NOTICE("in_info[0].tensor	%p \n", model_config.in_info[0].tensor);
-	EA_LOG_NOTICE("out_num           	%d \n", model_config.out_num);
-	EA_LOG_NOTICE("out_info[0].name  	%s \n", model_config.out_info[0].name);
-	EA_LOG_NOTICE("out_info[0].tensor	%p \n", model_config.out_info[0].tensor);
-	EA_LOG_NOTICE("input  shape[N:%d]  shape[C:%d]  shape[E:%d]  shape[E:%d]  \n", shape_in[EA_N], shape_in[EA_C], shape_in[EA_H], shape_in[EA_W]);
-	EA_LOG_NOTICE("output shape[N:%d]  shape[C:%d]  shape[E:%d]  shape[E:%d]  \n", shape[EA_N], shape[EA_C], shape[EA_H], shape[EA_W]);
-	EA_LOG_NOTICE("ea_tensor_dtype(out_info[0].tensor) %d \n", ea_tensor_dtype(model_config.out_info[0].tensor));
-	EA_LOG_NOTICE("ea_tensor_pitch(out_info[0].tensor %d \n", ea_tensor_pitch(model_config.out_info[0].tensor));
-	EA_LOG_NOTICE("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         	\n\n");
-
 	// custom build
 	yolox_cfg.strides[0] = YOLOX_STRIDE_1;
 	yolox_cfg.strides[1] = YOLOX_STRIDE_2;
@@ -68,31 +75,28 @@ void Face::build(Parser &PARSER)
 	}
 	res = (detection_result_t *)malloc(sizeof(detection_result_t));
 
-	size_t crop_shape[4];
-	crop_shape[0] = 1;
-	crop_shape[1] = 3;
-	crop_shape[2] = 480;
-	crop_shape[3] = 720;
-	rgb_LAND = ea_tensor_new(EA_U8, crop_shape, 0);
 
-	ROI_face_crop.x = (720 - C_WIDTH) / 2;
+	ROI_face_crop.x = 0;
 	ROI_face_crop.y = 0;
-	ROI_face_crop.w = C_WIDTH;
-	ROI_face_crop.h = 480;
+	ROI_face_crop.w = 320;
+	ROI_face_crop.h = 320;
 
 	tracked_face.x_start = 0;
 	tracked_face.x_end = 0;
 	tracked_face.y_start = 0;
 	tracked_face.y_end = 0;
 	tracked_face.isValid = 0;
+
+
 }
+
+
 void Face::doInference(ea_tensor_t **hold_image_tensor_pointer, ea_roi_t *face_box)
 {
 
 	EA_MEASURE_TIME_START();
 	ea_net_update_output(model_config.net, model_config.out[0].tensor_name, model_config.out[0].out); // net의 아웃풋과 tensor_name이 같은지 확인하고 net의 내부출력텐서를 out 외부출력텐서로 변경한다.//신경망의 출력값을 저장하는 기본적인 텐서(내부 출력 텐서)를, 사용자가 별도로 제공하는 다른 텐서(외부에서 제공된 텐서)로 변경 //printf("ea_tensor_shape(tmp->out[0].out)[0]  %d \n",ea_tensor_shape(tmp->out[0].out)[0~3]) ;왜 계속 변경하지?UMU
-	ea_cvt_color_resize(*hold_image_tensor_pointer, rgb_LAND, EA_COLOR_YUV2RGB_NV12, EA_VP);
-	ea_crop_resize(&rgb_LAND, 1, &model_config.in_info[0].tensor, 1, &ROI_face_crop, EA_TENSOR_COLOR_MODE_RGB, EA_VP);
+	ea_crop_resize(hold_image_tensor_pointer, 1, &model_config.in_info[0].tensor, 1, &ROI_face_crop, EA_TENSOR_COLOR_MODE_BGR, EA_VP);
 	EA_LOG_DEBUG("Face pre: %10ld us \n", ea_gettime_us() - ea_mt_start);
 
 	EA_MEASURE_TIME_START();
@@ -154,7 +158,7 @@ void Face::class_post_process(float *vp_output, char *labels, int label_count, e
 				{
 					p_box = p_next_data;
 					obj_conf = p_next_data[4];
-					if (obj_conf >= conf_threshold /*yolox_cfg->conf_threshold*/)
+					if (obj_conf >= DT /*yolox_cfg->conf_threshold*/)
 					{
 						p_class_conf = p_next_data + 5;
 						class_conf = p_class_conf[0];
@@ -168,7 +172,7 @@ void Face::class_post_process(float *vp_output, char *labels, int label_count, e
 							}
 						}
 
-						if (class_conf * obj_conf >= conf_threshold /*yolox_cfg->conf_threshold*/)
+						if (class_conf * obj_conf >= DT /*yolox_cfg->conf_threshold*/)
 						{
 							class_x1y1x2y2score = valid_x1y1x2y2score[class_pred];
 							class_valid_count = valid_count[class_pred];
@@ -224,9 +228,10 @@ void Face::class_post_process(float *vp_output, char *labels, int label_count, e
 				res->detections[res->valid_det_count].x_start = nms_x1y1x2y2score[c][i * 5 + 0] / ea_tensor_shape(model_config.in_info[0].tensor)[EA_W];
 				if (res->detections[res->valid_det_count].x_start < 0.02)
 					continue;
+
 				res->detections[res->valid_det_count].x_start = max_yolo(0.0, res->detections[res->valid_det_count].x_start);
 				res->detections[res->valid_det_count].x_start = min_yolo(1.0, res->detections[res->valid_det_count].x_start);
-				res->detections[res->valid_det_count].x_start = (res->detections[res->valid_det_count].x_start * (C_WIDTH / 720.0)) + ((720 - C_WIDTH) / 2.0 / 720.0);
+				res->detections[res->valid_det_count].x_start = (res->detections[res->valid_det_count].x_start * (C_WIDTH / camera_w)) + ((camera_w - C_WIDTH) / 2.0 / camera_w);
 
 				res->detections[res->valid_det_count].y_start = nms_x1y1x2y2score[c][i * 5 + 1] / ea_tensor_shape(model_config.in_info[0].tensor)[EA_H];
 				if (res->detections[res->valid_det_count].y_start < 0.02)
@@ -239,7 +244,7 @@ void Face::class_post_process(float *vp_output, char *labels, int label_count, e
 					continue;
 				res->detections[res->valid_det_count].x_end = max_yolo(res->detections[res->valid_det_count].x_start, res->detections[res->valid_det_count].x_end);
 				res->detections[res->valid_det_count].x_end = min_yolo(1.0, res->detections[res->valid_det_count].x_end);
-				res->detections[res->valid_det_count].x_end = (res->detections[res->valid_det_count].x_end * (C_WIDTH / 720.0)) + ((720 - C_WIDTH) / 2.0 / 720.0);
+				res->detections[res->valid_det_count].x_end = (res->detections[res->valid_det_count].x_end * (C_WIDTH / camera_w)) + ((camera_w - C_WIDTH) / 2.0 / camera_w);
 
 				res->detections[res->valid_det_count].y_end = nms_x1y1x2y2score[c][i * 5 + 3] / ea_tensor_shape(model_config.in_info[0].tensor)[EA_H];
 				if (res->detections[res->valid_det_count].y_end > 0.98)
@@ -280,25 +285,23 @@ void Face::class_post_process(float *vp_output, char *labels, int label_count, e
 		}
 
 		tracking();
-		face_box->x = (int)(tracked_face.x_start * 720);
-		face_box->y = (int)(tracked_face.y_start * 480);
-		face_box->w = (int)((tracked_face.x_end - tracked_face.x_start) * 720);
-		face_box->h = (int)((tracked_face.y_end - tracked_face.y_start) * 480);
+		if (icc_detect_is_face_valid == 1)
+		{
+
+			int uppad = 0;
+			tracked_face.x_start = tracked_face.x_start - (uppad / camera_w);
+			tracked_face.y_start = tracked_face.y_start - (uppad / camera_h);
+			tracked_face.x_end = tracked_face.x_end + (uppad / camera_w);
+			tracked_face.y_end = tracked_face.y_end + (uppad / camera_h);
+
+			face_box->x = (int)(tracked_face.x_start * camera_w);
+			face_box->y = (int)(tracked_face.y_start * camera_h);
+			face_box->w = (int)((tracked_face.x_end - tracked_face.x_start) * camera_w);
+			face_box->h = (int)((tracked_face.y_end - tracked_face.y_start) * camera_h);
+
+		}
 
 	} while (0);
-
-	if (res->valid_det_count != 0)
-		is_driver_valid = 1;
-	else
-	{
-		tracked_face.x_start = -1;
-		tracked_face.y_start = -1;
-		tracked_face.x_end = -1;
-		tracked_face.y_end = -1;
-		tracked_face.isValid = 0;
-		is_driver_valid = 0;
-
-	}
 
 	if (valid_x1y1x2y2score)
 	{
@@ -331,47 +334,6 @@ void Face::class_post_process(float *vp_output, char *labels, int label_count, e
 	}
 }
 
-void Face::draw_detection_bbox_textbox(ea_display_t *display)
-{
-	int rval = 0;
-	char text[MAX_LABEL_LEN];
-	int i;
-	do
-	{
-		if (display != NULL)
-		{
-			ea_display_obj_params(display)->obj_win_w = 1.0;
-			ea_display_obj_params(display)->obj_win_h = 1.0;
-
-			ea_display_obj_params(display)->border_thickness = 5;
-			ea_display_obj_params(display)->font_size = 32;
-			ea_display_obj_params(display)->text_color = EA_16_COLORS_WHITE;
-
-			RVAL_ASSERT(res != NULL);
-
-			for (i = 0; i < res->valid_det_count; i++)
-			{
-				ea_display_obj_params(display)->box_color = EA_16_COLORS_WHITE;
-				ea_display_set_bbox(display, "FACE", // 0~1 no pixel
-									res->detections[i].x_start,
-									res->detections[i].y_start,
-									res->detections[i].x_end - res->detections[i].x_start,
-									res->detections[i].y_end - res->detections[i].y_start);
-			}
-			if (res->valid_det_count != 0)
-			{
-				ea_display_obj_params(display)->text_color = EA_16_COLORS_RED;
-				ea_display_obj_params(display)->box_color = EA_16_COLORS_RED;
-
-				ea_display_set_bbox(display, "TARGET", // 0~1 no pixel
-									tracked_face.x_start,
-									tracked_face.y_start,
-									tracked_face.x_end - tracked_face.x_start,
-									tracked_face.y_end - tracked_face.y_start);
-			}
-		}
-	} while (0);
-}
 
 float Face::tracking_iou_v(face_tracking a, bbox_result_s b)
 {
@@ -383,15 +345,15 @@ float Face::tracking_iou_v(face_tracking a, bbox_result_s b)
 void Face::tracking()
 {
 
+
 	if (res->valid_det_count != 0)
 	{
-		float maxIou = 0.0f;
+		float maxIou = 0.1f;
 		int maxIndex = -1;
 		int check_iou = 1;
 
-		int maxScore_else = 0.0f;
+		float maxScore_else = 0.0f;
 		int maxIndex_else = -1;
-
 		if (tracked_face.isValid == 1)
 		{
 			for (int i = 0; i < res->valid_det_count; ++i)
@@ -407,31 +369,84 @@ void Face::tracking()
 
 			if (maxIndex != -1)
 			{
-				tracked_face.x_start = res->detections[maxIndex].x_start;
-				tracked_face.x_end = res->detections[maxIndex].x_end;
-				tracked_face.y_start = res->detections[maxIndex].y_start;
-				tracked_face.y_end = res->detections[maxIndex].y_end;
+				if (res->detections[maxIndex].score > conf_threshold)
+				{
+					tracked_face.x_start = res->detections[maxIndex].x_start;
+					tracked_face.x_end = res->detections[maxIndex].x_end;
+					tracked_face.y_start = res->detections[maxIndex].y_start;
+					tracked_face.y_end = res->detections[maxIndex].y_end;
+					tracked_face.isValid = true;
+					icc_detect_is_driver_valid = 1;
+					icc_detect_is_face_valid = 1;
+				}
+				else
+				{
+					tracked_face.x_start = res->detections[maxIndex].x_start;
+					tracked_face.x_end = res->detections[maxIndex].x_end;
+					tracked_face.y_start = res->detections[maxIndex].y_start;
+					tracked_face.y_end = res->detections[maxIndex].y_end;
+					tracked_face.isValid = true;
+					icc_detect_is_driver_valid = 1;
+					icc_detect_is_face_valid = 0;
+				}
 			}
 			else
+			{
+				tracked_face.x_start = -1;
+				tracked_face.y_start = -1;
+				tracked_face.x_end = -1;
+				tracked_face.y_end = -1;
 				tracked_face.isValid = false;
+				icc_detect_is_driver_valid = 0;
+				icc_detect_is_face_valid = 0;
+			}
 		}
+
 		else
 		{
+
 			for (int i = 0; i < res->valid_det_count; ++i)
 			{
 				float currentScore = res->detections[i].score;
+
 				if (currentScore > maxScore_else)
 				{
 					maxScore_else = currentScore;
 					maxIndex_else = i;
 				}
 			}
+			if (maxScore_else > conf_threshold)
+			{
 
-			tracked_face.x_start = res->detections[maxIndex_else].x_start;
-			tracked_face.x_end = res->detections[maxIndex_else].x_end;
-			tracked_face.y_start = res->detections[maxIndex_else].y_start;
-			tracked_face.y_end = res->detections[maxIndex_else].y_end;
-			tracked_face.isValid = true;
+				tracked_face.x_start = res->detections[maxIndex_else].x_start;
+				tracked_face.x_end = res->detections[maxIndex_else].x_end;
+				tracked_face.y_start = res->detections[maxIndex_else].y_start;
+				tracked_face.y_end = res->detections[maxIndex_else].y_end;
+				tracked_face.isValid = true;
+				icc_detect_is_driver_valid = 1;
+				icc_detect_is_face_valid = 1;
+			}
+			else
+			{
+				tracked_face.x_start = -1;
+				tracked_face.y_start = -1;
+				tracked_face.x_end = -1;
+				tracked_face.y_end = -1;
+				tracked_face.isValid = false;
+				icc_detect_is_driver_valid = 0;
+				icc_detect_is_face_valid = 0;
+			}
 		}
 	}
+	else
+	{
+		tracked_face.x_start = -1;
+		tracked_face.y_start = -1;
+		tracked_face.x_end = -1;
+		tracked_face.y_end = -1;
+		tracked_face.isValid = false;
+		icc_detect_is_driver_valid = 0;
+		icc_detect_is_face_valid = 0;
+	}
 }
+// tracked_face = {-1, -1, -1, -1};

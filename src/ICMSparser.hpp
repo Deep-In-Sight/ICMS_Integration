@@ -3,7 +3,7 @@
 
 #include <eazyai.h>
 #include <iostream>
-#include "iniparser.hpp"
+
 
 
 
@@ -11,9 +11,15 @@ class Parser{
 public:
 
 	bool sys_visualize;
-	int sys_camera_w;
-	int sys_camera_h;
 	int sys_log_level;
+	int icc_input_camera_x ; 
+	int icc_input_camera_z ; 
+	int icc_input_camera_y ; 
+	int icc_input_camera_roll ; 
+	int icc_input_camera_pitch ; 
+	int icc_input_camera_yaw ; 
+
+
 
 
 	std::string YOLO_ENGINE;
@@ -30,12 +36,17 @@ public:
 
 
 	std::string FACEID_ENGINE;
+	int FACEID_MODE_KC;
+	int FACEID_MODE;
 	int FACEID_log_level;
 
 	std::string GAZE_ENGINE;
 	float GAZE_CONFIDENCE;
 	int GAZE_log_level;
 
+
+	int camera_w;
+	int camera_h;
 
 	void parsing();
 

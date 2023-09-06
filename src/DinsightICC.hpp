@@ -26,13 +26,6 @@
 
 EA_LOG_DECLARE_LOCAL(EA_LOG_LEVEL_VERBOSE);
 EA_MEASURE_TIME_DECLARE();
-#include "model_management.hpp"
-#include "face.hpp"
-#include "landmark.hpp"
-#include "attribute.hpp"
-#include "faceID.hpp"
-#include "DinsightCallbackStruct.hpp"
-
 
 
 
@@ -47,11 +40,22 @@ EA_MEASURE_TIME_DECLARE();
 #define MAX_LABEL_NUM 256
 
 
+class Face;  
+class Landmark;  
+class Attribute;  
+class FaceID;  
+class Gaze;  
 
 class DinsightICC : public Parser
 {
 public:
-
+	
+	Face* FACE; 
+	Landmark* LANDMARK;
+	Attribute* ATTR; 
+	FaceID* FACEID; 
+	Gaze* GAZE;
+	
 	typedef struct iav_input_param_type_s
 	{
 		ea_img_resource_t *img_resource[NN_MAX_PORT_NUM];
@@ -76,26 +80,38 @@ public:
 
 	iav_input_param_type_t *input_param;
 	ea_display_t *display;
-	L1CallbackStruct l1CB;
 	
-	Face FACE;
-	Landmark LANDMARK;
-	Attribute ATTR;
-	FaceID FACEID;
+    std::thread startICCTread;
+
+	cv::Mat IMG;
+
+	void initClassFunction();
+
+	ea_roi_t ROI_face_crop;
+
+	int Frame_num;
+
+	ea_tensor_t *face_Iimg_tensor1 = NULL;
+	ea_tensor_t *face_Iimg_tensor2 = NULL;
+	cv::Mat faceCV;
+
+	ea_tensor_t *Iimg_tensor1 = NULL;
+	ea_tensor_t *Iimg_tensor2 = NULL;
+	cv::Mat Iimg;
 
 
-	ea_roi_t ROI_land_crop;
+	void sysInit();
 
-
-
-	ea_display_t* sysInit();
 	void ambaSysInit();
+	void imgQ(cv::Mat cam_img);
 	void StartICC();
 	void resultSetStruct();
 	void DModelInit();
 
+private:
+
+
+
 };
-
-
 
 #endif /*__DinsightICC__*/

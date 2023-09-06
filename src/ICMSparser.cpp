@@ -14,6 +14,12 @@ void Parser::parsing()
 
 	sys_visualize = 	ft.GetSection("SYS")->GetValue("visualize", -1).AsBool();
 	sys_log_level = 	ft.GetSection("SYS")->GetValue("log_level", -1).AsInt();
+	icc_input_camera_x = 		ft.GetSection("SYS")->GetValue("icc_input_camera_x",-1).AsInt() ; 
+	icc_input_camera_z = 		ft.GetSection("SYS")->GetValue("icc_input_camera_z",-1).AsInt() ; 
+	icc_input_camera_y = 		ft.GetSection("SYS")->GetValue("icc_input_camera_y",-1).AsInt() ; 
+	icc_input_camera_roll = 	ft.GetSection("SYS")->GetValue("icc_input_camera_roll",-1).AsInt() ; 
+	icc_input_camera_pitch =	ft.GetSection("SYS")->GetValue("icc_input_camera_pitch",-1).AsInt() ; 
+	icc_input_camera_yaw = 		ft.GetSection("SYS")->GetValue("icc_input_camera_yaw",-1).AsInt() ; 
 
 	YOLO_ENGINE = 		ft.GetSection("YOLO")->GetValue("ENGINE", -1).AsString();
 	YOLO_ENGINE = 		"./" + YOLO_ENGINE + ".bin";
@@ -33,7 +39,14 @@ void Parser::parsing()
 
 	FACEID_ENGINE = 	ft.GetSection("FACEID")->GetValue("ENGINE", -1).AsString();
 	FACEID_ENGINE = 	"./" + FACEID_ENGINE + ".bin";
+	FACEID_MODE = 		ft.GetSection("FACEID")->GetValue("SET_MODE", -1).AsInt();
+	FACEID_MODE_KC = 		ft.GetSection("FACEID")->GetValue("MODE", -1).AsInt();
 	FACEID_log_level = 	ft.GetSection("FACEID")->GetValue("log_level", -1).AsInt();
+
+
+// FACEID_MODE_KC
+// FACEID_MODE
+
 
 	GAZE_ENGINE = 		ft.GetSection("GAZE")->GetValue("ENGINE", -1).AsString();
 	GAZE_ENGINE = 		"./" + GAZE_ENGINE + ".bin";

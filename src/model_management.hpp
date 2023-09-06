@@ -24,6 +24,7 @@ class DLmodel_struct
 {
 public:
 
+
 	typedef struct nn_model_port_info_s
 	{
 		const char *name;

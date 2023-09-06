@@ -8,7 +8,7 @@ $(shell rm  $(Current_Folder)/test_eazyai)
 
 
 
-AMB_TOPDIR=/home/umu/Desktop/0_minu/0_amba/cv22iccr/ambarella
+AMB_TOPDIR=/home/umu/Desktop/0_minu/0_Amba/file/cv22iccr/ambarella
 PREBUILD_OSS_DIR=$(AMB_TOPDIR)/prebuild/oss/armv8-a
 
 
@@ -16,10 +16,9 @@ LOCAL_TARGET	:= test_eazyai
 LOCAL_SRCS	:= $(Current_src_Folder)/test_eazyai.cpp \
 $(Current_src_Folder)/ICMSparser.c\
 $(Current_src_Folder)/DinsightICC.cpp\
-$(Current_src_Folder)/attribute.cpp\
 $(Current_src_Folder)/landmark.cpp\
 $(Current_src_Folder)/face.cpp\
-$(Current_src_Folder)/faceID.cpp
+$(Current_src_Folder)/gaze.cpp\
 
 
 LOCAL_CFLAGS  = -Wall -O3 -fopenmp \
@@ -41,7 +40,7 @@ OPENCV_PATH		:= $(PREBUILD_OSS_DIR)/opencv
 
 LOCAL_CFLAGS	+= -I$(OPENCV_PATH)/include/opencv4
 
-LOCAL_LDFLAGS	+= -lpthread -lopencv_core -lopencv_imgproc -lopencv_imgcodecs \
+LOCAL_LDFLAGS	+= -lpthread -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_imgcodecs -lopencv_calib3d -lopencv_videoio  \
 	-L$(OPENCV_PATH)/usr/lib \
 	-Wl,-rpath-link=$(FIX_SO_DIR)/usr/lib \
 	-Wl,-rpath-link=$(OPENCV_PATH)/usr/lib \

@@ -91,23 +91,44 @@ public:
 	detection_result_t *res = NULL;
 	nnl_yolox_arm_cfg_t yolox_cfg ;
 
+
+    std::deque<std::tuple<int, int, int>> xyz_history;
+	struct icc_detect_head_position_cal_struct
+	{
+		int x;
+		int y;
+		int z;
+	};
+
+	icc_detect_head_position_cal_struct icc_detect_head_position;
+
+	int driver_x;
+	int driver_y;
+	int driver_z;
+
+	float DT=0.1; //driver threshold
+	float conf_threshold; //face Threshold
+	float nms_threshold;
+	float C_WIDTH;
+
+ 	int icc_detect_is_driver_valid;
+ 	int icc_detect_is_face_valid;
+
 	void Init();
-	void build(Parser &PARSER);
+	void build(Parser PARSER);
 
 	void doInference(ea_tensor_t **hold_image_tensor_pointer,ea_roi_t* face_box);
 	void class_post_process(float* vp_output, char* labels, int label_count,ea_roi_t* face_box);
-	void draw_detection_bbox_textbox(ea_display_t *ctx);
 	float tracking_iou_v(face_tracking a, bbox_result_s b);
 	void tracking();
 
 	bool detectionFlag;
 	ea_roi_t ROI_face_crop;
 
-	float conf_threshold;
-	float nms_threshold;
-	float C_WIDTH;
+	float camera_w;
+	float camera_h;
 
-	int is_driver_valid;
+
 
 };
 
